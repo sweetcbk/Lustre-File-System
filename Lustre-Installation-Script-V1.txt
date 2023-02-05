@@ -1,0 +1,271 @@
+***************************************************************************************
+       ++++++++++  Luster File System Installation on Centos7  ++++++++++++
+***************************************************************************************
++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+	1:- Virtual Machine Master (MGS/MDS) :- ADD 2 EXTARA HARDDISK SIZE 10GB
+	2:- Virtual Machine Master (OSS/OST) :- ADD 1 EXTARA HARDDISK SIZE 10GB
++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+=======================================================================================
+  On Master (MGS/MDS) Virtual Machine
+=======================================================================================
+
+[root@localhost ~]# hostnamectl set-hostname master
+[root@localhost ~]# systemctl stop firewalld
+[root@localhost ~]# systemctl disable firewalld
+[root@localhost ~]# vim /etc/selinux/config
+                    ------------------------
+                         selinux=disabled
+                    ------------------------
+                          ADD THIS LINE 
+                    ------------------------
+[root@localhost ~]# vi /etc/hosts
+                    -------------------------------
+                     192.168.235.136 master
+			   192.168.235.137 node1
+			   192.168.235.138 node2
+                    -------------------------------
+[root@localhost ~]# ping node1
+[root@localhost ~]# ping node2
+[root@localhost ~]# reboot
+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+--------------------------------------------------------------------------------------
+[root@localhost ~]# yum update -y
+[root@localhost ~]# yum install epel-release -y
+[root@master ~]#
+cat >/tmp/lustre-repo.conf <<\__EOF
+[lustre-server]
+name=lustre-server
+baseurl=https://downloads.whamcloud.com/public/lustre/latest-2.12-release/el7/server
+# exclude=*debuginfo*
+gpgcheck=0
+
+[lustre-client]
+name=lustre-client
+baseurl=https://downloads.whamcloud.com/public/lustre/latest-2.12-release/el7/client
+# exclude=*debuginfo*
+gpgcheck=0
+
+[e2fsprogs-wc]
+name=e2fsprogs-wc
+baseurl=https://downloads.whamcloud.com/public/e2fsprogs/latest/el7
+# exclude=*debuginfo*
+gpgcheck=0
+__EOF
+------------------------------------------------------------------------------------
+[root@node2 ~]# scp /tmp/lustre-repo.conf /etc/yum.repos.d/lustre.repo
+[root@master ~]# scp /etc/yum.repos.d/lustre.repo root@node1:/etc/yum.repos.d/   
+[root@master ~]# scp /etc/yum.repos.d/lustre.repo root@node2:/etc/yum.repos.d/
+-------------------------------------------------------------------------------------
+yum --nogpgcheck --disablerepo=* --enablerepo=e2fsprogs-wc \
+install e2fsprogs
+--------------------------------------------------------------------------------------
+yum --nogpgcheck --disablerepo=base,extras,updates \
+--enablerepo=lustre-server install \
+kernel \
+kernel-devel \
+kernel-headers \
+kernel-tools \
+kernel-tools-libs \
+kernel-tools-libs-devel
+--------------------------------------------------------------------------------------
+[root@node2 ~]# reboot
+[root@node2 ~]# uname -r
+[root@master ~]# rpm -qa | grep kernel
+-------------------------------------------------
+ Verify this files
+-------------------------------------------------
+kernel-headers-3.10.0-1160.49.1.el7_lustre.x86_64
+kernel-3.10.0-1160.81.1.el7.x86_64
+abrt-addon-kerneloops-2.1.11-60.el7.centos.x86_64
+kernel-tools-libs-3.10.0-1160.81.1.el7.x86_64
+kernel-devel-3.10.0-957.1.3.el7_lustre.x86_64
+kernel-devel-3.10.0-1160.49.1.el7_lustre.x86_64
+kernel-tools-libs-devel-3.10.0-1160.81.1.el7.x86_64
+kernel-tools-3.10.0-1160.81.1.el7.x86_64
+kernel-3.10.0-1160.49.1.el7_lustre.x86_64
+kernel-3.10.0-1160.el7.x86_64
+
+--------------------------------------------------------------
+yum --nogpgcheck --enablerepo=lustre-server install \
+kmod-lustre \
+kmod-lustre-osd-ldiskfs \
+lustre-osd-ldiskfs-mount \
+lustre \
+lustre-resource-agents
+-----------------------------------------------------------------------------------------
+[root@localhost ~]# modprobe -v lustre
+[root@master ~]# lsblk
+[root@master ~]# mkfs.lustre --fsname=lustre --mgs --mdt --index=0 /dev/sdb
+[root@master ~]# mkdir /mnt/mdt && mount -t lustre /dev/sdb /mnt/mdt
+[root@master ~]# vi /etc/modprobe.d/lustre.conf
+                --------------------------------------------
+                 options lnet networks=tcp(ens33)
+                --------------------------------------------
+[root@master ~]# scp /etc/modprobe.d/lustre.conf root@node1:/etc/modprobe.d/                                                                                                                                      100%   33    14.7KB/s   00:00    
+[root@master ~]# scp /etc/modprobe.d/lustre.conf root@node2:/etc/modprobe.d/
+
+*****************************************************************************************
+*****************************************************************************************
+
+=======================================================================================
+  On Node-1 (OSS/OST) Virtual Machine
+=======================================================================================
+
+[root@localhost ~]# hostnamectl set-hostname master
+[root@localhost ~]# systemctl stop firewalld
+[root@localhost ~]# systemctl disable firewalld
+[root@localhost ~]# vim /etc/selinux/config
+                    ------------------------
+                         selinux=disabled
+                    ------------------------
+                          ADD THIS LINE 
+                    ------------------------
+[root@localhost ~]# vi /etc/hosts
+                    -------------------------------
+                     192.168.235.136 master
+			   192.168.235.137 node1
+			   192.168.235.138 node2
+                    -------------------------------
+[root@localhost ~]# ping node1
+[root@localhost ~]# ping node2
+[root@localhost ~]# reboot
+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+--------------------------------------------------------------------------------------
+[root@localhost ~]# yum update -y
+[root@localhost ~]# yum install epel-release -y
+[root@master ~]#
+cat >/tmp/lustre-repo.conf <<\__EOF
+[lustre-server]
+name=lustre-server
+baseurl=https://downloads.whamcloud.com/public/lustre/latest-2.12-release/el7/server
+# exclude=*debuginfo*
+gpgcheck=0
+
+[lustre-client]
+name=lustre-client
+baseurl=https://downloads.whamcloud.com/public/lustre/latest-2.12-release/el7/client
+# exclude=*debuginfo*
+gpgcheck=0
+
+[e2fsprogs-wc]
+name=e2fsprogs-wc
+baseurl=https://downloads.whamcloud.com/public/e2fsprogs/latest/el7
+# exclude=*debuginfo*
+gpgcheck=0
+__EOF
+------------------------------------------------------------------------------------
+[root@node2 ~]# scp /tmp/lustre-repo.conf /etc/yum.repos.d/lustre.repo
+[root@master ~]# scp /etc/yum.repos.d/lustre.repo root@node1:/etc/yum.repos.d/   
+[root@master ~]# scp /etc/yum.repos.d/lustre.repo root@node2:/etc/yum.repos.d/
+-------------------------------------------------------------------------------------
+yum --nogpgcheck --disablerepo=* --enablerepo=e2fsprogs-wc \
+install e2fsprogs
+--------------------------------------------------------------------------------------
+yum --nogpgcheck --disablerepo=base,extras,updates \
+--enablerepo=lustre-server install \
+kernel \
+kernel-devel \
+kernel-headers \
+kernel-tools \
+kernel-tools-libs \
+kernel-tools-libs-devel
+--------------------------------------------------------------------------------------
+[root@node2 ~]# reboot
+[root@node2 ~]# uname -r
+---------------------------------------------------------------------------------------
+-------------------------------------------------
+ Verify this files
+-------------------------------------------------
+kernel-headers-3.10.0-1160.49.1.el7_lustre.x86_64
+kernel-3.10.0-1160.81.1.el7.x86_64
+abrt-addon-kerneloops-2.1.11-60.el7.centos.x86_64
+kernel-tools-libs-3.10.0-1160.81.1.el7.x86_64
+kernel-devel-3.10.0-957.1.3.el7_lustre.x86_64
+kernel-devel-3.10.0-1160.49.1.el7_lustre.x86_64
+kernel-tools-libs-devel-3.10.0-1160.81.1.el7.x86_64
+kernel-tools-3.10.0-1160.81.1.el7.x86_64
+kernel-3.10.0-1160.49.1.el7_lustre.x86_64
+kernel-3.10.0-1160.el7.x86_64
+
+---------------------------------------------------------------------------------------
+yum --nogpgcheck --enablerepo=lustre-server install \
+kmod-lustre \
+kmod-lustre-osd-ldiskfs \
+lustre-osd-ldiskfs-mount \
+lustre \
+lustre-resource-agents
+-----------------------------------------------------------------------------------------
+[root@node2 ~]# modprobe -v lustre
+[root@node2 ~]# mkfs.lustre --ost --fsname=lustre --mgsnode=192.168.235.174@tcp0 --index=0 /dev/sdb
+[root@node1 ~]# mkdir /ostoss_mount && mount -t lustre /dev/sdb /ostoss_mount
+
+
+*****************************************************************************************
+*****************************************************************************************
+
+=======================================================================================
+  On Node-2 (CLIENT) Virtual Machine
+=======================================================================================
+
+[root@localhost ~]# hostnamectl set-hostname master
+[root@localhost ~]# systemctl stop firewalld
+[root@localhost ~]# systemctl disable firewalld
+[root@localhost ~]# vim /etc/selinux/config
+                    ------------------------
+                         selinux=disabled
+                    ------------------------
+                          ADD THIS LINE 
+                    ------------------------
+[root@localhost ~]# vi /etc/hosts
+                    -------------------------------
+                     192.168.235.136 master
+			   192.168.235.137 node1
+			   192.168.235.138 node2
+                    -------------------------------
+[root@localhost ~]# ping node1
+[root@localhost ~]# ping node2
+[root@localhost ~]# reboot
+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+--------------------------------------------------------------------------------------
+[root@localhost ~]# yum update -y
+[root@localhost ~]# yum install epel-release -y
+[root@master ~]#
+cat >/tmp/lustre-repo.conf <<\__EOF
+[lustre-server]
+name=lustre-server
+baseurl=https://downloads.whamcloud.com/public/lustre/latest-2.12-release/el7/server
+# exclude=*debuginfo*
+gpgcheck=0
+
+[lustre-client]
+name=lustre-client
+baseurl=https://downloads.whamcloud.com/public/lustre/latest-2.12-release/el7/client
+# exclude=*debuginfo*
+gpgcheck=0
+
+[e2fsprogs-wc]
+name=e2fsprogs-wc
+baseurl=https://downloads.whamcloud.com/public/e2fsprogs/latest/el7
+# exclude=*debuginfo*
+gpgcheck=0
+__EOF
+------------------------------------------------------------------------------------
+yum install \
+kernel \
+kernel-devel \
+kernel-headers \
+kernel-abi-whitelists \
+kernel-tools \
+kernel-tools-libs \
+kernel-tools-libs-devel
+-------------------------------------------------------------------------------------
+[root@node2 ~]# reboot
+[root@node2 ~]#
+yum --nogpgcheck --enablerepo=lustre-client install \
+kmod-lustre-client \
+lustre-client
+-----------------------------------------------------------
+[root@node2 ~]# modprobe -v lustre
+[root@node2 ~]# mkdir /mnt/lustre
+[root@node2 ~]# mount -t lustre 192.168.235.174@tcp0:/lustre /mnt/lustre
+[root@node2 ~]# df -Th
