@@ -1,6 +1,7 @@
 ***************************************************************************************
        ++++++++++  Luster File System Installation on Centos7  ++++++++++++
 ***************************************************************************************
+                              Need 3 VM 
 +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 	1:- Virtual Machine Master (MGS/MDS) :- ADD 2 EXTARA HARDDISK SIZE 10GB
 	2:- Virtual Machine Master (OSS/OST) :- ADD 1 EXTARA HARDDISK SIZE 10GB
